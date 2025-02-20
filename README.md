@@ -21,7 +21,7 @@ sudo apt install libsqlite3-dev
 ```
 
 ### Windows
-¯\\_(ツ)_/¯ Good luck
+¯\\\_(ツ)\_/¯ Good luck
 
 
 ## Building
