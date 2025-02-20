@@ -18,7 +18,10 @@ namespace gg::Net::Exceptions {
     };
 
     class SSLException : std::exception {
+    	public:
+     		~SSLException() _NOEXCEPT;
 
+       		const char* what() const _NOEXCEPT;
     };
 
 };

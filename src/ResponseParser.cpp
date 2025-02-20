@@ -70,7 +70,7 @@ gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseResponse(std::string &re
         std::cout << "Response: " << resp << std::endl;
     }
 
-    return {};
+    return (gg::Net::ResponseObject_t){};
 }
 
 gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseSuccessResponse(StatusCode sc, std::string& mime_type, std::string& content) {

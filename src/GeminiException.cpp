@@ -15,3 +15,11 @@ gg::Net::Exceptions::ConnectionException::~ConnectionException() throw() {
 const char* gg::Net::Exceptions::ConnectionException::what() const throw() {
     return "Connection Exception";
 }
+
+gg::Net::Exceptions::SSLException::~SSLException() throw() {
+
+}
+
+const char* gg::Net::Exceptions::SSLException::what() const throw() {
+	return "SSL Exception";
+}
