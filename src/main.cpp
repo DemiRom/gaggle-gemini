@@ -1,3 +1,4 @@
+#include <cstring>
 #include <iostream>
 
 #include "GeminiRequest.h"
@@ -15,16 +16,26 @@ size_t crawl_count = 0;
 void crawl(Link_t& link) {
     crawl_count++;
 
-    GeminiRequest request(link.host, link.port);
-    ResponseParser parser("gemini://" + link.host);
-    ResponseObject_t ro = parser.ParseResponse(request.DoRequest(link.link_url));
+    std::cout << "DEBUG: " << link.link_url << std::endl;
 
-    if(ro.status_code == StatusCode::SUCCESS && crawl_count < MAX_CRAWL_COUNT) {
-        for(Link_t link : ro.links) {
-            std::cout << "Link: " << link.link_url << std::endl;
-            crawl(link);
+    GeminiRequest *request = new GeminiRequest(link.host, link.port);
+    ResponseParser *parser = new ResponseParser("gemini://" + link.host);
+    ResponseObject_t *ro = (ResponseObject_t*)(malloc(sizeof(ResponseObject_t)));
+
+    // parser->ParseResponse(request->DoRequest(link.link_url));
+    ResponseObject_t rp = parser->ParseResponse(request->DoRequest(link.link_url));
+    memcpy(ro, &rp, sizeof(ResponseObject_t));
+
+    if(ro->status_code == StatusCode::SUCCESS && crawl_count < MAX_CRAWL_COUNT) {
+        for(Link_t link : ro->links) {
+            // std::cout << "Link: " << link.link_url << std::endl;
+            // crawl(link);
         }
     }
+
+    delete request;
+    delete parser;
+    free(ro);
 }
 
 int main(int argc, char** argv) {
@@ -41,7 +52,7 @@ int main(int argc, char** argv) {
 
     if(ro.status_code == StatusCode::SUCCESS) {
         for(Link_t link : ro.links) {
-            std::cout << "Link: " << link.link_url << std::endl;
+            std::cout << "Link: " << link.link_url << " Host: " << link.host << std::endl;
             crawl(link);
         }
     } else {

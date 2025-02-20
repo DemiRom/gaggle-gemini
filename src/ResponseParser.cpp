@@ -118,7 +118,7 @@ gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseSuccessResponse(StatusCo
         }
     }
 
-    return {
+    return (ResponseObject_t){
         .status_code = sc,
         .mime_type = mime_type,
         .content = content,
