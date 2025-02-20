@@ -66,15 +66,14 @@ gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseResponse(std::string &re
                 break;
         }
     } catch (std::exception &e) {
-        std::cerr << "Could not parse status code" << std::endl;
+        std::cerr << "Could not parse status code: " << e.what() << std::endl;
+        std::cout << "Response: " << resp << std::endl;
     }
 
     return {};
 }
 
 gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseSuccessResponse(StatusCode sc, std::string& mime_type, std::string& content) {
-    std::cout << "Content Length: " << content.length() << std::endl;
-
     std::string cp = content; //Copy the string because split modify it.
     auto content_lines = gg::Utils::StringUtils::Split(cp, "\n");
 
@@ -82,21 +81,34 @@ gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseSuccessResponse(StatusCo
 
     for(auto line : content_lines) {
         if(line.find("=>") != std::string::npos) {
-            if(line.find("http") != std::string::npos || line.find("https") != std::string::npos) { //TODO This could be much better
+            if(line.find("http://") != std::string::npos || line.find("https://") != std::string::npos) { //TODO This could be much better
                 continue;
             }
 
             line.erase(0, 3); //Remove the => tag
 
-            // auto split = gg::Utils::StringUtils::Split(line, " ");
-            // std::cout << "Link Line: " << line;
-            // std::cout << "Split Size: " << split.size() << std::endl;
+            std::string cp = line;
+            std::vector<std::string> split;
+            if(cp.find("\t") != std::string::npos)
+                split = gg::Utils::StringUtils::Split(cp, "\t"); //TODO This will break on other pages because it may not necessarily be a tab
+            else
+                split = gg::Utils::StringUtils::Split(cp, " ");
 
-            links.push_back((Link_t){
-                .base_url = this->base_url,
-                .link_url = line.substr(0, line.find("/ ") - 1),
-                .pretty_name = line.substr(line.find("/ ") + 1, line.length())
-            });
+            if(line.find("gemini://") != std::string::npos) {
+                links.push_back((Link_t) {
+                    .base_url = "",
+                    .link_url = split[0],
+                    .relative_url = "",
+                    .pretty_name = split[1]
+                });
+            } else {
+                links.push_back((Link_t){
+                    .base_url = this->base_url,
+                    .link_url = this->base_url + split[0],
+                    .relative_url = split[0],
+                    .pretty_name = split[1]
+                });
+            }
         }
     }
 

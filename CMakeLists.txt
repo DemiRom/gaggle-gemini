@@ -18,6 +18,9 @@ set(SRCS
 )
 
 find_package(OpenSSL REQUIRED)
+find_package(SQLite3 REQUIRED)
+
+include_directories(${SQLITE3_INCLUDE_DIRS})
 
 add_executable(gemeni-gaggle ${SRCS})
-target_link_libraries(gemeni-gaggle OpenSSL::SSL)
+target_link_libraries(gemeni-gaggle OpenSSL::SSL sqlite3)

@@ -41,6 +41,7 @@ enum StatusCode : std::uint32_t {
 
 typedef struct Link {
     std::string base_url;
+    std::string relative_url;
     std::string link_url;
     std::string pretty_name;
 } Link_t;

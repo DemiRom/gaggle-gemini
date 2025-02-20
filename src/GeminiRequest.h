@@ -20,6 +20,8 @@ namespace gg::Net {
 
             std::string& DoRequest(const std::string& request);
 
+            const std::string& GetRequestString() const;
+
         private:
             struct addrinfo hints = {};
             struct addrinfo *ptr_addrs = nullptr;
@@ -30,6 +32,7 @@ namespace gg::Net {
             int socket_descriptor = 0;
 
             std::string response_string;
+            std::string request_string;
     };
 };
 

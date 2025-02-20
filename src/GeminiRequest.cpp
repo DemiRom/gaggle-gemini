@@ -5,7 +5,6 @@
 #include <sstream>
 
 gg::Net::GeminiRequest::GeminiRequest(const std::string& host, size_t port) {
-
     this->hints.ai_family = AF_INET;
     this->hints.ai_socktype = SOCK_STREAM;
     this->hints.ai_protocol = IPPROTO_TCP;
@@ -30,7 +29,13 @@ gg::Net::GeminiRequest::GeminiRequest(const std::string& host, size_t port) {
     if (this->socket_descriptor == -1) {
         throw gg::Net::Exceptions::ConnectionException();
     }
+}
 
+gg::Net::GeminiRequest::~GeminiRequest() {
+    close(this->socket_descriptor);
+}
+
+std::string& gg::Net::GeminiRequest::DoRequest(const std::string& request) {
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
     ptr_ssl_ctx = SSL_CTX_new(TLS_client_method());
@@ -45,19 +50,6 @@ gg::Net::GeminiRequest::GeminiRequest(const std::string& host, size_t port) {
     if (SSL_connect(ptr_ssl) < 0) {
         throw gg::Net::Exceptions::SSLException();
     }
-}
-
-gg::Net::GeminiRequest::~GeminiRequest() {
-    SSL_set_shutdown(ptr_ssl, SSL_RECEIVED_SHUTDOWN | SSL_SENT_SHUTDOWN);
-    SSL_shutdown(ptr_ssl);
-    SSL_free(ptr_ssl);
-    SSL_CTX_free(ptr_ssl_ctx);
-
-    close(this->socket_descriptor);
-}
-
-std::string& gg::Net::GeminiRequest::DoRequest(const std::string& request) {
-    // std::string request = "gemini://geminiprotocol.net/\r\n";
 
     SSL_write(ptr_ssl, request.c_str(), request.length());
 
@@ -78,5 +70,14 @@ std::string& gg::Net::GeminiRequest::DoRequest(const std::string& request) {
 
     this->response_string = ss.str();
 
+    SSL_set_shutdown(ptr_ssl, SSL_RECEIVED_SHUTDOWN | SSL_SENT_SHUTDOWN);
+    SSL_shutdown(ptr_ssl);
+    SSL_free(ptr_ssl);
+    SSL_CTX_free(ptr_ssl_ctx);
+
     return this->response_string;
+}
+
+const std::string& gg::Net::GeminiRequest::GetRequestString() const {
+    return this->request_string;
 }
