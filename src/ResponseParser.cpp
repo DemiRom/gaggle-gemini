@@ -94,19 +94,25 @@ gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseSuccessResponse(StatusCo
             else
                 split = gg::Utils::StringUtils::Split(cp, " ");
 
+            std::string host = this->base_url;
+
+            host.erase(0, 9); // Remove the protocol
+
             if(line.find("gemini://") != std::string::npos) {
                 links.push_back((Link_t) {
-                    .base_url = "",
+                    .host = host,
                     .link_url = split[0],
-                    .relative_url = "",
-                    .pretty_name = split[1]
+                    .relative_url = "", //TODO Split of the relative url
+                    .pretty_name = split[1],
+                    .port = 1965 //TODO Split off the port
                 });
             } else {
                 links.push_back((Link_t){
-                    .base_url = this->base_url,
+                    .host = host,
                     .link_url = this->base_url + split[0],
                     .relative_url = split[0],
-                    .pretty_name = split[1]
+                    .pretty_name = split[1],
+                    .port = 1965 //TODO Split off the port
                 });
             }
         }

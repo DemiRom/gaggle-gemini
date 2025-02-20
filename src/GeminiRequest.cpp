@@ -36,6 +36,8 @@ gg::Net::GeminiRequest::~GeminiRequest() {
 }
 
 std::string& gg::Net::GeminiRequest::DoRequest(const std::string& request) {
+    std::string full_request = request + "\r\n"; //Add CRLF to the request url
+
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
     ptr_ssl_ctx = SSL_CTX_new(TLS_client_method());
@@ -51,7 +53,7 @@ std::string& gg::Net::GeminiRequest::DoRequest(const std::string& request) {
         throw gg::Net::Exceptions::SSLException();
     }
 
-    SSL_write(ptr_ssl, request.c_str(), request.length());
+    SSL_write(ptr_ssl, full_request.c_str(), full_request.length());
 
     char buffer[1024];
 
