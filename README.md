@@ -27,10 +27,20 @@ sudo apt install libsqlite3-dev
 ## Building
 Ensure all dependencies are installed then simply run
 
+- With CMake:
 ```
 mkdir build
 cd build
 cmake ../ -GNinja
+ninja
+./gemini-gaggle
+```
+
+- With Meson:
+```
+mkdir build
+cd build
+meson setup ../
 ninja
 ./gemini-gaggle
 ```
