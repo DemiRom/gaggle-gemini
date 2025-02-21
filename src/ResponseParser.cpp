@@ -67,10 +67,9 @@ gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseResponse(std::string &re
         }
     } catch (std::exception &e) {
         std::cerr << "Could not parse status code: " << e.what() << std::endl;
-        std::cout << "Response: " << resp << std::endl;
     }
 
-    return (gg::Net::ResponseObject_t){};
+    return {};
 }
 
 gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseSuccessResponse(StatusCode sc, std::string& mime_type, std::string& content) {
@@ -99,7 +98,7 @@ gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseSuccessResponse(StatusCo
             host.erase(0, 9); // Remove the protocol
 
             if(line.find("gemini://") != std::string::npos) {
-                links.push_back((Link_t) {
+                links.push_back({
                     .host = host,
                     .link_url = split[0],
                     .relative_url = "", //TODO Split of the relative url
@@ -107,7 +106,7 @@ gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseSuccessResponse(StatusCo
                     .port = 1965 //TODO Split off the port
                 });
             } else {
-                links.push_back((Link_t){
+                links.push_back({
                     .host = host,
                     .link_url = this->base_url + split[0],
                     .relative_url = split[0],
@@ -118,7 +117,7 @@ gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseSuccessResponse(StatusCo
         }
     }
 
-    return (ResponseObject_t){
+    return {
         .status_code = sc,
         .mime_type = mime_type,
         .content = content,

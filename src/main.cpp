@@ -19,20 +19,20 @@ void crawl(Link_t &link) {
     ResponseParser *parser = new ResponseParser("gemini://" + link.host);
     ResponseObject_t *ro = (ResponseObject_t *)(malloc(sizeof(ResponseObject_t)));
 
-
     // parser->ParseResponse(request->DoRequest(link.link_url));
-    ResponseObject_t rp =
-        parser->ParseResponse(request->DoRequest(link.link_url));
+    auto response = request->DoRequest(link.link_url);
 
+    std::cout << "Response: " << response << std::endl;
+
+    ResponseObject_t rp =
+        parser->ParseResponse(response);
 
     memcpy(ro, &rp, sizeof(ResponseObject_t));
-
-    std::cout << "HERE? " << std::endl;
 
     if (ro->status_code == StatusCode::SUCCESS && crawl_count < MAX_CRAWL_COUNT) {
         for (Link_t link : ro->links) {
         // std::cout << "Link: " << link.link_url << std::endl;
-        // crawl(link);
+        	crawl(link);
         }
     }
 
@@ -41,13 +41,13 @@ void crawl(Link_t &link) {
     free(ro);
 }
 
-int main(int argc, char **argv) {
-    GeminiRequest request(HOST, PORT);
+int main() {
+    GeminiRequest *request = new GeminiRequest(HOST, PORT);
 
-    std::string response = request.DoRequest("gemini://geminiprotocol.net/");
+    std::string response = request->DoRequest("gemini://geminiprotocol.net/");
 
-    ResponseParser parser("gemini://geminiprotocol.net/");
-    ResponseObject_t ro = parser.ParseResponse(response);
+    ResponseParser *parser = new ResponseParser("gemini://geminiprotocol.net/");
+    ResponseObject_t ro = parser->ParseResponse(response);
 
     // std::cout << "Status: " << ro.status_code << std::endl;
     // std::cout << "MimeType: " << ro.mime_type << std::endl;
@@ -55,14 +55,17 @@ int main(int argc, char **argv) {
 
     if (ro.status_code == StatusCode::SUCCESS) {
         for (Link_t link : ro.links) {
-        std::cout << "Link: " << link.link_url << " Host: " << link.host
-                    << std::endl;
-        crawl(link);
+	        std::cout << "Link: " << link.link_url << " Host: " << link.host
+	                    << std::endl;
+	        crawl(link);
         }
     } else {
-        std::cout << "Failed to request " << request.GetRequestString()
+        std::cout << "Failed to request " << request->GetRequestString()
                 << std::endl;
     }
+
+    delete request;
+    delete parser;
 
     return 0;
 }
