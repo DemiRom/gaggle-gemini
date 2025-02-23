@@ -1,16 +1,32 @@
 #include "GeminiRequest.h"
 #include "GeminiException.h"
 
+#include <cerrno>
 #include <iostream>
+#include <openssl/ssl.h>
 #include <sstream>
 
 gg::Net::GeminiRequest::GeminiRequest(const std::string& host, size_t port) {
-    this->hints.ai_family = AF_INET;
+	std::string host_clean = host;
+
+	if(host_clean.find("http://") != std::string::npos || host_clean.find("https://") != std::string::npos)
+	{
+		throw gg::Net::Exceptions::SocketException();
+	}
+
+	if(*(host_clean.end() - 1) == '/')
+		host_clean.erase(host_clean.end() - 1); // Remove the last character which should be "/"
+
+	if(host_clean.find("gemini://") != std::string::npos) {
+		host_clean.erase(0, 9); // Remove the protocol
+	}
+
+	this->hints.ai_family = AF_INET;
     this->hints.ai_socktype = SOCK_STREAM;
     this->hints.ai_protocol = IPPROTO_TCP;
 
-    if (getaddrinfo(host.c_str(), std::to_string(port).c_str(), &hints, &this->ptr_addrs) < 0) {
-        std::cerr << "Could not get address of " << host << std::endl << std::flush;
+    if (getaddrinfo(host_clean.c_str(), std::to_string(port).c_str(), &hints, &this->ptr_addrs) < 0) {
+        std::cerr << "Could not get address of " << host_clean << std::endl << std::flush;
         exit(1);
     }
 
@@ -26,8 +42,9 @@ gg::Net::GeminiRequest::GeminiRequest(const std::string& host, size_t port) {
 
     freeaddrinfo(this->ptr_addrs);
 
-    if (this->socket_descriptor == -1) {
-        throw gg::Net::Exceptions::ConnectionException();
+    if(this->socket_descriptor <= 0) {
+    	// std::cout << "DEBUG Host: " << host_clean << " Port: " << port << " ERR: " << strerror(errno) << std::endl;
+    	throw gg::Net::Exceptions::SocketException("Socket could not be opened");
     }
 }
 
@@ -36,44 +53,58 @@ gg::Net::GeminiRequest::~GeminiRequest() {
 }
 
 std::string& gg::Net::GeminiRequest::DoRequest(const std::string& request) {
+	std::string req = request;
+
+	if(*(req.end() - 1) == '/') {
+		req.erase(req.end() - 1);
+	}
+
+    std::string full_request = request + "\r\n"; //Add CRLF to the request url
+
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
-    ptr_ssl_ctx = SSL_CTX_new(TLS_client_method());
+    this->ptr_ssl_ctx = SSL_CTX_new(TLS_client_method());
 
-    if (ptr_ssl_ctx == nullptr) {
-        throw gg::Net::Exceptions::SSLException();
+    if (this->ptr_ssl_ctx == nullptr) {
+        throw gg::Net::Exceptions::SSLException("Could not create SSL context");
     }
 
-    ptr_ssl = SSL_new(ptr_ssl_ctx);
-    SSL_set_fd(ptr_ssl, this->socket_descriptor);
+    SSL_CTX_set_timeout(this->ptr_ssl_ctx, 5);
 
-    if (SSL_connect(ptr_ssl) < 0) {
-        throw gg::Net::Exceptions::SSLException();
+    this->ptr_ssl = SSL_new(this->ptr_ssl_ctx);
+
+    if(this->socket_descriptor == 0) {
+    	throw gg::Net::Exceptions::SocketException("Socket is invalid");
     }
 
-    SSL_write(ptr_ssl, request.c_str(), request.length());
+    SSL_set_fd(this->ptr_ssl, this->socket_descriptor);
+    if (SSL_connect(this->ptr_ssl) < 0) {
+        throw gg::Net::Exceptions::SSLException("SSL Could not connect");
+    }
+
+    SSL_write(this->ptr_ssl, full_request.c_str(), full_request.length());
 
     char buffer[1024];
 
     std::stringstream ss;
 
-    ssize_t n = SSL_read(ptr_ssl, buffer, sizeof(buffer));
+    ssize_t n = SSL_read(this->ptr_ssl, buffer, sizeof(buffer));
     while (n > 0) {
         // fwrite(buffer, 1, n, stdout);
 
-        for(size_t i = 0; i < n; i++) {
+        for(ssize_t i = 0; i < n; i++) {
             ss << buffer[i];
         }
 
-        n = SSL_read(ptr_ssl, buffer, sizeof(buffer));
+        n = SSL_read(this->ptr_ssl, buffer, sizeof(buffer));
     }
 
     this->response_string = ss.str();
 
-    SSL_set_shutdown(ptr_ssl, SSL_RECEIVED_SHUTDOWN | SSL_SENT_SHUTDOWN);
-    SSL_shutdown(ptr_ssl);
-    SSL_free(ptr_ssl);
-    SSL_CTX_free(ptr_ssl_ctx);
+    SSL_set_shutdown(this->ptr_ssl, SSL_RECEIVED_SHUTDOWN | SSL_SENT_SHUTDOWN);
+    SSL_shutdown(this->ptr_ssl);
+    SSL_free(this->ptr_ssl);
+    SSL_CTX_free(this->ptr_ssl_ctx);
 
     return this->response_string;
 }
