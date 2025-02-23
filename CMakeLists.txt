@@ -16,7 +16,9 @@ set(SRCS
     src/GeminiException.h
     src/GeminiRequest.cpp
     src/GeminiRequest.h
-
+    src/Log.h
+    src/SQLite.cpp
+    src/SQLite.h
 )
 
 find_package(OpenSSL REQUIRED)
