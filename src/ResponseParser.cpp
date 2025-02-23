@@ -119,12 +119,71 @@ ResponseContent_t ResponseParser::ParseResponseContent(std::string& resp) {
     for(Token_t token : tokens) {
     	switch(token.type) {
 		   	case Text:
-				text = token.data;
+				text += token.data;
 			break;
 			case Link:
-				links.push_back({
-					.link_url = token.data
-				});
+			{
+				std::string linkText = token.data;
+
+				auto words = Utils::StringUtils::SplitWhitespace(linkText);
+
+				std::stringstream urlStream;
+				std::stringstream linkTextStream;
+
+				assert(!words.empty());
+
+				for(size_t i = 1; i < words.size(); i++) {
+					linkTextStream << words[i] << " ";
+				}
+
+				if(words[0].find("gemini://") != std::string::npos ||
+					words[0].find("http://") != std::string::npos ||
+					words[0].find("https://") != std::string::npos
+				) {
+					urlStream << words[0];
+
+					//TODO Get the host from the link
+					std::string url = words[0];
+
+					auto urlSplit = Utils::StringUtils::Split(url, "/");
+
+					assert(!urlSplit.empty());
+
+					std::string protocol = urlSplit[0] + "//";
+					std::string host     = urlSplit[1] + "/";
+
+					std::stringstream relativeUrlStream;
+
+					for(size_t i = 2; i < urlSplit.size(); i++){
+						relativeUrlStream << urlSplit[i] << "/";
+					}
+
+					std::string relativeUrl = relativeUrlStream.str();
+
+					relativeUrl.erase(relativeUrl.end() - 1);
+
+					size_t port = 1965; //TODO Fix this
+
+					links.push_back({
+						.protocol = protocol,
+						.url = urlStream.str(),
+						.host = host,
+						.relative_url = relativeUrl,
+						.port = port,
+						.text = linkTextStream.str()
+					});
+				} else {
+					urlStream << this->base_url << words[0];
+					links.push_back({
+						.protocol = "gemini://",
+						.url = urlStream.str(),
+						.host = this->base_url,
+						.relative_url = words[0],
+						.port = 1965,
+						.text = linkTextStream.str()
+					});
+				}
+			}
 			break;
 			case Heading:
 				headings.push_back({
@@ -142,7 +201,7 @@ ResponseContent_t ResponseParser::ParseResponseContent(std::string& resp) {
 				});
 			break;
 			case PreformatToggle:
-				formattedText = token.data;
+				formattedText += token.data;
 			break;
 		}
     }
@@ -167,65 +226,78 @@ ResponseObject_t ResponseParser::GenerateSuccessResponse(ResponseHeader_t &heade
 std::vector<Token_t> ResponseParser::Tokenize(std::string& source) {
 	std::vector<Token_t> tokens;
 
-	std::vector<std::string> words = Utils::StringUtils::SplitWhitespace(source);
+	std::string sc = source;
 
-	for(auto word : words) {
-		std::cout << "DEBUG: " << word << std::endl;
-	}
+	auto lines = Utils::StringUtils::Split(sc, "\n");
 
-	while(!words.empty()) {
-		if(words.front() == "=>") {
-			// Link
-			tokens.push_back({
-				.type = TokenType::Link,
-				.data = Utils::StringUtils::GetLine(words)
-			});
-		} else if (words.front() == "#") {
-			// Heading
-			tokens.push_back({
-				.type = TokenType::Heading,
-				.data = Utils::StringUtils::GetLine(words)
-			});
-		} else if (words.front() == "*") {
-			// List
-			tokens.push_back({
-				.type = TokenType::List,
-				.data = Utils::StringUtils::GetLine(words)
-			});
-		} else if (words.front() == ">") {
-			// Quote
-			tokens.push_back({
-				.type = TokenType::Quote,
-				.data = Utils::StringUtils::GetLine(words)
-			});
-		} else if (words.front() == "```") {
-			// Preformatted text
+	for(auto& line : lines) {
+		if(line.empty())
+			continue;
 
-			// Remove the first ```
-		  	Utils::StringUtils::Shift(words);
+		auto words = Utils::StringUtils::SplitWhitespace(line);
 
-			std::stringstream formattedText;
+		while(!words.empty()) {
+			if(words.front() == "=>") {
+				// Link
+				Utils::StringUtils::Shift(words); // Get rid of =>
 
-			while(words.front() != "```") {
-				formattedText << Utils::StringUtils::Shift(words);
+				tokens.push_back({
+					.type = TokenType::Link,
+					.data = Utils::StringUtils::GetLine(words)
+				});
+			} else if (words.front() == "#" || words.front() == "##" || words.front() == "###") {
+				// Heading
+				Utils::StringUtils::Shift(words); // Get rid of #
+
+				tokens.push_back({
+					.type = TokenType::Heading,
+					.data = Utils::StringUtils::GetLine(words)
+				});
+			} else if (words.front() == "*") {
+				// List
+				Utils::StringUtils::Shift(words); // Get rid of *
+
+				tokens.push_back({
+					.type = TokenType::List,
+					.data = Utils::StringUtils::GetLine(words)
+				});
+			} else if (words.front() == ">") {
+				// Quote
+				Utils::StringUtils::Shift(words); // Get rid of #
+
+				tokens.push_back({
+					.type = TokenType::Quote,
+					.data = Utils::StringUtils::GetLine(words)
+				});
+			} else if (words.front() == "```") {
+				// Preformatted text
+
+				// Remove the first ```
+			  	Utils::StringUtils::Shift(words);
+
+				std::stringstream formattedText;
+
+				while(words.front() != "```") {
+					formattedText << Utils::StringUtils::Shift(words);
+				}
+
+				// Remove the last ```
+				Utils::StringUtils::Shift(words);
+
+				tokens.push_back({
+					.type = TokenType::PreformatToggle,
+					.data = formattedText.str()
+				});
+
+			} else {
+				// Text
+				tokens.push_back({
+					.type = TokenType::Text,
+					.data = Utils::StringUtils::GetLine(words)
+				});
 			}
 
-			// Remove the last ```
-			Utils::StringUtils::Shift(words);
-
-			tokens.push_back({
-				.type = TokenType::PreformatToggle,
-				.data = formattedText.str()
-			});
-
-		} else {
-			// Text
-			tokens.push_back({
-				.type = TokenType::Text,
-				.data = Utils::StringUtils::GetLine(words)
-			});
 		}
-
 	}
 
 	return tokens;

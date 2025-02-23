@@ -20,7 +20,7 @@ void crawl(Link_t &link) {
     ResponseObject_t *ro = (ResponseObject_t *)(malloc(sizeof(ResponseObject_t)));
 
     // parser->ParseResponse(request->DoRequest(link.link_url));
-    auto response = request->DoRequest(link.link_url);
+    auto response = request->DoRequest(link.url);
 
     std::cout << "Response: " << response << std::endl;
 
@@ -51,15 +51,22 @@ int main() {
 
     std::cout << "Status: " << ro.header.status_code << std::endl;
     std::cout << "MimeType: " << ro.header.mime_type << std::endl;
-    std::cout << "Content: " << ro.content.text << std::endl;
-    std::cout << "Links Size: " << ro.content.links.size() << std::endl;
+    std::cout << "Lang: " << ro.header.lang << std::endl;
+    // std::cout << "Content: " << ro.content.text << std::endl;
+    // std::cout << "Links Size: " << ro.content.links.size() << std::endl;
 
     if (ro.header.status_code == StatusCode::SUCCESS) {
         for (Link_t link : ro.content.links) {
-	        std::cout << "Link: " << link.link_url << " Host: " << link.host
-	                    << std::endl;
+	        std::cout << "Link: " << link.url
+					  << " Host: " << link.host
+					  << " Text: " << link.text
+	                  << std::endl;
 	        // crawl(link);
         }
+        for (Heading_t heading : ro.content.headings) {
+        	std::cout << "Heading: " << heading.heading_text << std::endl;
+        }
+
     } else {
         std::cout << "Failed to request " << request->GetRequestString()
                 << std::endl;

@@ -53,12 +53,13 @@ enum Lang {
 };
 
 typedef struct Link {
+	std::string protocol;
 	std::string host;
 	std::string relative_url;
-	std::string link_url;
+	std::string url;
 	size_t port;
 
-	std::string pretty_name;
+	std::string text;
 } Link_t;
 
 typedef struct Heading {

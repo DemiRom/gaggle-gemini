@@ -56,8 +56,7 @@ namespace gg::Utils {
 		std::stringstream lineStream;
 
 		while(!words.empty()) {
-			if(words.front() != "\n")
-				lineStream << Shift(words) << " ";
+			lineStream << Shift(words) << " ";
 		}
 
 		return lineStream.str();
