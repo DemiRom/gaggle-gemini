@@ -1,10 +1,15 @@
+#include <algorithm>
 #include <cstring>
 #include <iostream>
+#include <sstream>
 
 #include "GeminiException.h"
 #include "GeminiRequest.h"
 #include "ResponseObject.h"
 #include "ResponseParser.h"
+
+#include <SQLiteCpp/SQLiteCpp.h>
+#include <SQLiteCpp/VariadicBind.h>
 
 #define HOST "geminiprotocol.net"
 #define PORT 1965
@@ -13,6 +18,7 @@
 using namespace gg::Net;
 
 size_t crawl_count = 0;
+SQLite::Database db("gaggle-gemini.db3", SQLite::OPEN_READWRITE|SQLite::OPEN_CREATE);
 
 void crawl(Link_t &link) {
     crawl_count++;
@@ -43,6 +49,14 @@ void crawl(Link_t &link) {
 						  << "\tHost: " << link.host << std::endl
 						  << "\tText: " << link.text << std::endl
 			              << std::endl;
+
+				SQLite::Transaction transaction(db);
+	        	SQLite::Statement query(db, "INSERT INTO links VALUES (NULL, ?, ?)");
+	         	query.bind(1, link.url);
+	          	query.bind(2, link.text);
+	        	query.exec();
+	        	transaction.commit();
+
 	        	crawl(link);
 	        }
 		    std::cout << "END [" << crawl_count << "] -------------------------- [" << crawl_count << "] END" << std::endl << std::endl;
@@ -62,6 +76,24 @@ void crawl(Link_t &link) {
 }
 
 int main() {
+	std::cout << "SQLite3 Version " << SQLite::VERSION << SQLite::getLibVersion() << std::endl;
+
+	db.exec("DROP TABLE IF EXISTS links");
+    db.exec("CREATE TABLE links (id INTEGER PRIMARY KEY, url TEXT, text TEXT)");
+
+    // // first row
+    // int nb = db.exec("INSERT INTO test VALUES (NULL, \"test\")");
+    // std::cout << "INSERT INTO test VALUES (NULL, \"test\")\", returned " << nb << std::endl;
+
+    // // second row
+    // nb = db.exec("INSERT INTO test VALUES (NULL, \"second\")");
+    // std::cout << "INSERT INTO test VALUES (NULL, \"second\")\", returned " << nb << std::endl;
+
+    // // update the second row
+    // nb = db.exec("UPDATE test SET value=\"second-updated\" WHERE id='2'");
+    // std::cout << "UPDATE test SET value=\"second-updated\" WHERE id='2', returned " << nb << std::endl;
+
+
     GeminiRequest *request = new GeminiRequest(HOST, PORT);
 
     std::string response = request->DoRequest("gemini://geminiprotocol.net/");
@@ -71,6 +103,13 @@ int main() {
 
     if (ro.header.status_code == StatusCode::SUCCESS) {
         for (Link_t link : ro.content.links) {
+
+        	SQLite::Transaction transaction(db);
+        	SQLite::Statement query(db, "INSERT INTO links VALUES (NULL, ?, ?)");
+         	query.bind(1, link.url);
+          	query.bind(2, link.text);
+        	query.exec();
+        	transaction.commit();
 	      //   std::cout << "Link: " << link.url << std::endl
 					  // << "Host: " << link.host << std::endl
 					  // << "Text: " << link.text << std::endl

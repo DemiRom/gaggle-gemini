@@ -18,8 +18,6 @@ executable(
 	'src/StringUtils.h',
 	'src/main.cpp',
 	'src/Log.h',
-	'src/SQLite.cpp',
-	'src/SQLite.h',
-	dependencies: [dependency('OpenSSL'), dependency('SQLite3')],
+	dependencies: [dependency('OpenSSL'), dependency('SQLiteCpp')],
 	install: true,
 )
