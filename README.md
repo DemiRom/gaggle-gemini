@@ -23,9 +23,9 @@ sudo apt install libssl-dev
 I prefer to use Meson since its a little more user friendly than CMake.
 This will compile and install the SQLiteCpp library to your machine.
 
-### Pull submodule
+### Download SQLiteCpp
 ```
-git submodule update --init --recursive
+git clone https://github.com/SRombauts/SQLiteCpp.git
 ```
 
 ### Create build directory and move into it
@@ -35,7 +35,7 @@ mkdir build
 cd build
 ```
 
-### Generate build scripts, compile and install
+### Generate build scripts, compile and install SQLiteCpp
 - With Meson:
 ```
 meson setup ../
@@ -58,7 +58,7 @@ mkdir build
 cd build
 ```
 
-### Generate build scripts, compile and install
+### Generate build scripts, compile and install gaggle-gemini
 - With CMake:
 ```
 cmake ../ -GNinja
