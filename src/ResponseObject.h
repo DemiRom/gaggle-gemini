@@ -39,6 +39,19 @@ enum StatusCode : std::uint32_t {
 	UNKNOWN = 99
 };
 
+enum MimeType {
+	TEXT_GEMINI,
+	TEXT_HTML
+};
+
+enum Lang {
+	EN,
+	FR,
+	DE_CH,
+	SR_CYR,
+	ZH_HANS_CN
+};
+
 typedef struct Link {
 	std::string host;
 	std::string relative_url;
@@ -48,13 +61,36 @@ typedef struct Link {
 	std::string pretty_name;
 } Link_t;
 
-typedef struct ResponseObject {
-	StatusCode status_code;
-	std::string mime_type;
-	std::vector<Link_t> links;
+typedef struct Heading {
+	std::string heading_text;
+} Heading_t;
 
-	std::string content;
-	size_t content_length;
+typedef struct ListItem {
+	std::string list_item_text;
+} ListItem_t;
+
+typedef struct QuoteItem {
+	std::string quote_item_text;
+} QuoteItem_t;
+
+typedef struct ResponseHeader {
+	StatusCode status_code;
+	MimeType mime_type;
+	Lang lang;
+} ResponseHeader_t;
+
+typedef struct ResponseContent {
+	std::vector<Link_t> links;
+	std::vector<Heading_t> headings;
+	std::vector<ListItem_t> list_items;
+	std::vector<QuoteItem_t> quote_items;
+	std::string formatted_text;
+	std::string text;
+} ResponseContent_t;
+
+typedef struct ResponseObject {
+	ResponseHeader_t header;
+	ResponseContent_t content;
 } ResponseObject_t;
 
 }; // Namespace gg::Net

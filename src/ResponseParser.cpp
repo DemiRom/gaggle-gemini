@@ -1,127 +1,234 @@
 #include "ResponseParser.h"
 #include "ResponseObject.h"
 #include "StringUtils.h"
-#include <exception>
 #include <sstream>
+#include <cassert>
+#include <exception>
 #include <string>
 #include <iostream>
+#include <sys/socket.h>
 #include <vector>
 
-gg::Net::ResponseParser::ResponseParser(const std::string& base_url) : base_url(base_url) {
+namespace gg::Net {
 
-}
+ResponseParser::ResponseParser(const std::string& base_url) : base_url(base_url) { }
 
-gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseResponse(std::string &resp) {
-    std::stringstream ss;
+ResponseObject_t ResponseParser::ParseResponse(std::string &resp) {
+	auto responseHeader = ParseResponseHeader(resp);
+    switch(responseHeader.status_code) {
+        case INPUT_EXPECTED_BASIC:
+            break;
+        case INPUT_SENSITIVE:
+            break;
+        case SUCCESS:
+       	{
+        	auto responseContent = ParseResponseContent(resp);
+            return GenerateSuccessResponse(responseHeader, responseContent);
+       	}
+        break;
 
-    auto lines = gg::Utils::StringUtils::Split(resp, "\r\n");
-
-    auto response_header_words = gg::Utils::StringUtils::Split(lines[0], " ");
-
-    //Status code should be the very first word in the response
-    try {
-        StatusCode sc = static_cast<StatusCode>(std::stoi(response_header_words[0]));
-        std::string mime_type = lines[0];
-        std::string content = lines[1];
-
-        switch(sc) {
-            case INPUT_EXPECTED_BASIC:
-                break;
-            case INPUT_SENSITIVE:
-                break;
-            case SUCCESS:
-                return ParseSuccessResponse(sc, mime_type, content);
-                break;
-            case TEMPORARY_REDIRECTION:
-                break;
-            case PERMANENT_REDIRECTION:
-                break;
-            case UNSPECIFIED_ERROR:
-                break;
-            case SERVER_UNAVAILABLE:
-                break;
-            case CGI_ERROR:
-                break;
-            case PROXY_ERROR:
-                break;
-            case SLOW_DOWN:
-                break;
-            case PERMANENT_FAILIURE:
-                break;
-            case NOT_FOUND:
-                break;
-            case GONE:
-                break;
-            case PROXY_REQUEST_REFUSED:
-                break;
-            case BAD_REQUEST:
-                break;
-            case CONTENT_REQUIRES_CERT:
-                break;
-            case CERTIFICATE_NOT_AUTH:
-                break;
-            case CERTIFICATE_NOT_VALID:
-                break;
-            case UNKNOWN:
-                break;
-        }
-    } catch (std::exception &e) {
-        std::cerr << "Could not parse status code: " << e.what() << std::endl;
+        case TEMPORARY_REDIRECTION:
+            break;
+        case PERMANENT_REDIRECTION:
+            break;
+        case UNSPECIFIED_ERROR:
+            break;
+        case SERVER_UNAVAILABLE:
+            break;
+        case CGI_ERROR:
+            break;
+        case PROXY_ERROR:
+            break;
+        case SLOW_DOWN:
+            break;
+        case PERMANENT_FAILIURE:
+            break;
+        case NOT_FOUND:
+            break;
+        case GONE:
+            break;
+        case PROXY_REQUEST_REFUSED:
+            break;
+        case BAD_REQUEST:
+            break;
+        case CONTENT_REQUIRES_CERT:
+            break;
+        case CERTIFICATE_NOT_AUTH:
+            break;
+        case CERTIFICATE_NOT_VALID:
+            break;
+        case UNKNOWN:
+            break;
     }
 
     return {};
 }
 
-gg::Net::ResponseObject_t gg::Net::ResponseParser::ParseSuccessResponse(StatusCode sc, std::string& mime_type, std::string& content) {
-    std::string cp = content; //Copy the string because split modify it.
-    auto content_lines = gg::Utils::StringUtils::Split(cp, "\n");
+ResponseHeader_t ResponseParser::ParseResponseHeader(std::string& resp) {
+	std::string responseCopy = resp;
 
-    std::vector<gg::Net::Link_t> links;
+	auto responseLines = Utils::StringUtils::Split(responseCopy, "\r\n");
 
-    for(auto line : content_lines) {
-        if(line.find("=>") != std::string::npos) {
-            if(line.find("http://") != std::string::npos || line.find("https://") != std::string::npos) { //TODO This could be much better
-                continue;
-            }
+	assert(responseLines.size() > 0);
 
-            line.erase(0, 3); //Remove the => tag
+	auto responseHeaderText = responseLines[0];
+	auto responseHeaderWords = Utils::StringUtils::SplitWhitespace(responseLines[0]);
 
-            std::string cp = line;
-            std::vector<std::string> split;
-            if(cp.find("\t") != std::string::npos)
-                split = gg::Utils::StringUtils::Split(cp, "\t"); //TODO This will break on other pages because it may not necessarily be a tab
-            else
-                split = gg::Utils::StringUtils::Split(cp, " ");
+	assert(responseHeaderWords.size() > 1);
 
-            std::string host = this->base_url;
+	StatusCode statusCode = StatusCode::UNSPECIFIED_ERROR;
+	MimeType mimeType = MimeType::TEXT_GEMINI;
+	Lang lang = Lang::EN;
 
-            host.erase(0, 9); // Remove the protocol
+	try {
+		statusCode = static_cast<StatusCode>(std::stoi(responseHeaderWords[0]));
+	} catch (std::exception& e) {
+		std::cerr << "Could not parse status code: " << e.what() << " " << __FILE__ << ":" << __LINE__ << std::endl;
+	}
 
-            if(line.find("gemini://") != std::string::npos) {
-                links.push_back({
-                    .host = host,
-                    .link_url = split[0],
-                    .relative_url = "", //TODO Split of the relative url
-                    .pretty_name = split[1],
-                    .port = 1965 //TODO Split off the port
-                });
-            } else {
-                links.push_back({
-                    .host = host,
-                    .link_url = this->base_url + split[0],
-                    .relative_url = split[0],
-                    .pretty_name = split[1],
-                    .port = 1965 //TODO Split off the port
-                });
-            }
-        }
+	return {
+		.status_code = statusCode,
+		.mime_type = mimeType,
+		.lang = lang
+	};
+}
+
+ResponseContent_t ResponseParser::ParseResponseContent(std::string& resp) {
+	std::vector<Heading_t> headings;
+	std::vector<Link_t> links;
+	std::vector<ListItem_t> listItems;
+	std::vector<QuoteItem_t> quoteItems;
+	std::string formattedText;
+	std::string text;
+
+	auto responseCopy = resp;
+
+
+	auto responseSplit = Utils::StringUtils::Split(responseCopy, "\r\n");
+	assert(responseSplit.size() > 0);
+	responseSplit.erase(responseSplit.begin());
+
+	responseCopy.clear();
+
+	for(const auto& line : responseSplit)
+		responseCopy += line;
+
+
+    auto tokens = Tokenize(responseCopy);
+
+    for(Token_t token : tokens) {
+    	switch(token.type) {
+		   	case Text:
+				text = token.data;
+			break;
+			case Link:
+				links.push_back({
+					.link_url = token.data
+				});
+			break;
+			case Heading:
+				headings.push_back({
+					.heading_text = token.data
+				});
+			break;
+			case List:
+				listItems.push_back({
+					.list_item_text = token.data
+				});
+			break;
+			case Quote:
+				quoteItems.push_back({
+					.quote_item_text = token.data
+				});
+			break;
+			case PreformatToggle:
+				formattedText = token.data;
+			break;
+		}
     }
 
+	return {
+		.headings = headings,
+		.links = links,
+		.list_items = listItems,
+		.quote_items = quoteItems,
+		.formatted_text = formattedText,
+		.text = text
+	};
+}
+
+ResponseObject_t ResponseParser::GenerateSuccessResponse(ResponseHeader_t &header, ResponseContent_t &content) {
     return {
-        .status_code = sc,
-        .mime_type = mime_type,
-        .content = content,
-        .content_length = content.length(),
-        .links = std::move(links)
+    	.header = header,
+     	.content = content
     };
 }
+
+std::vector<Token_t> ResponseParser::Tokenize(std::string& source) {
+	std::vector<Token_t> tokens;
+
+	std::vector<std::string> words = Utils::StringUtils::SplitWhitespace(source);
+
+	for(auto word : words) {
+		std::cout << "DEBUG: " << word << std::endl;
+	}
+
+	while(!words.empty()) {
+		if(words.front() == "=>") {
+			// Link
+			tokens.push_back({
+				.type = TokenType::Link,
+				.data = Utils::StringUtils::GetLine(words)
+			});
+		} else if (words.front() == "#") {
+			// Heading
+			tokens.push_back({
+				.type = TokenType::Heading,
+				.data = Utils::StringUtils::GetLine(words)
+			});
+		} else if (words.front() == "*") {
+			// List
+			tokens.push_back({
+				.type = TokenType::List,
+				.data = Utils::StringUtils::GetLine(words)
+			});
+		} else if (words.front() == ">") {
+			// Quote
+			tokens.push_back({
+				.type = TokenType::Quote,
+				.data = Utils::StringUtils::GetLine(words)
+			});
+		} else if (words.front() == "```") {
+			// Preformatted text
+
+			// Remove the first ```
+		  	Utils::StringUtils::Shift(words);
+
+			std::stringstream formattedText;
+
+			while(words.front() != "```") {
+				formattedText << Utils::StringUtils::Shift(words);
+			}
+
+			// Remove the last ```
+			Utils::StringUtils::Shift(words);
+
+			tokens.push_back({
+				.type = TokenType::PreformatToggle,
+				.data = formattedText.str()
+			});
+
+		} else {
+			// Text
+			tokens.push_back({
+				.type = TokenType::Text,
+				.data = Utils::StringUtils::GetLine(words)
+			});
+		}
+
+	}
+
+	return tokens;
+}
+
+} //namespace gg::Net

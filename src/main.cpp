@@ -29,8 +29,8 @@ void crawl(Link_t &link) {
 
     memcpy(ro, &rp, sizeof(ResponseObject_t));
 
-    if (ro->status_code == StatusCode::SUCCESS && crawl_count < MAX_CRAWL_COUNT) {
-        for (Link_t link : ro->links) {
+    if (ro->header.status_code == StatusCode::SUCCESS && crawl_count < MAX_CRAWL_COUNT) {
+        for (Link_t link : ro->content.links) {
         // std::cout << "Link: " << link.link_url << std::endl;
         	crawl(link);
         }
@@ -49,15 +49,16 @@ int main() {
     ResponseParser *parser = new ResponseParser("gemini://geminiprotocol.net/");
     ResponseObject_t ro = parser->ParseResponse(response);
 
-    // std::cout << "Status: " << ro.status_code << std::endl;
-    // std::cout << "MimeType: " << ro.mime_type << std::endl;
-    // std::cout << "Content: " << ro.content << std::endl;
+    std::cout << "Status: " << ro.header.status_code << std::endl;
+    std::cout << "MimeType: " << ro.header.mime_type << std::endl;
+    std::cout << "Content: " << ro.content.text << std::endl;
+    std::cout << "Links Size: " << ro.content.links.size() << std::endl;
 
-    if (ro.status_code == StatusCode::SUCCESS) {
-        for (Link_t link : ro.links) {
+    if (ro.header.status_code == StatusCode::SUCCESS) {
+        for (Link_t link : ro.content.links) {
 	        std::cout << "Link: " << link.link_url << " Host: " << link.host
 	                    << std::endl;
-	        crawl(link);
+	        // crawl(link);
         }
     } else {
         std::cout << "Failed to request " << request->GetRequestString()
