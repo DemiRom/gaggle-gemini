@@ -1,6 +1,7 @@
 #include "ResponseParser.h"
 #include "ResponseObject.h"
 #include "StringUtils.h"
+#include <regex>
 #include <sstream>
 #include <cassert>
 #include <exception>
@@ -11,10 +12,11 @@
 
 namespace gg::Net {
 
-ResponseParser::ResponseParser(const std::string& base_url) : base_url(base_url) { }
+ResponseParser::ResponseParser(const std::string& host, const std::string& relative_url) : host(host), relative_url(relative_url) { }
 
 ResponseObject_t ResponseParser::ParseResponse(std::string &resp) {
 	auto responseHeader = ParseResponseHeader(resp);
+
     switch(responseHeader.status_code) {
         case INPUT_EXPECTED_BASIC:
             break;
@@ -25,8 +27,7 @@ ResponseObject_t ResponseParser::ParseResponse(std::string &resp) {
         	auto responseContent = ParseResponseContent(resp);
             return GenerateSuccessResponse(responseHeader, responseContent);
        	}
-        break;
-
+        	break;
         case TEMPORARY_REDIRECTION:
             break;
         case PERMANENT_REDIRECTION:
@@ -44,7 +45,11 @@ ResponseObject_t ResponseParser::ParseResponse(std::string &resp) {
         case PERMANENT_FAILIURE:
             break;
         case NOT_FOUND:
-            break;
+        {
+        	ResponseContent_t emptyResponse;
+        	return GenerateSuccessResponse(responseHeader, emptyResponse);
+        }
+        	break;
         case GONE:
             break;
         case PROXY_REQUEST_REFUSED:
@@ -76,7 +81,7 @@ ResponseHeader_t ResponseParser::ParseResponseHeader(std::string& resp) {
 
 	assert(responseHeaderWords.size() > 1);
 
-	StatusCode statusCode = StatusCode::UNSPECIFIED_ERROR;
+	StatusCode statusCode = StatusCode::UNKNOWN;
 	MimeType mimeType = MimeType::TEXT_GEMINI;
 	Lang lang = Lang::EN;
 
@@ -125,32 +130,45 @@ ResponseContent_t ResponseParser::ParseResponseContent(std::string& resp) {
 			{
 				std::string linkText = token.data;
 
-				auto words = Utils::StringUtils::SplitWhitespace(linkText);
+				auto linkTextSplit = Utils::StringUtils::SplitWhitespace(linkText);
 
 				std::stringstream urlStream;
 				std::stringstream linkTextStream;
 
-				assert(!words.empty());
+				assert(!linkTextSplit.empty());
 
-				for(size_t i = 1; i < words.size(); i++) {
-					linkTextStream << words[i] << " ";
+				for(size_t i = 1; i < linkTextSplit.size(); i++) {
+					linkTextStream << linkTextSplit[i] << " ";
 				}
 
-				if(words[0].find("gemini://") != std::string::npos ||
-					words[0].find("http://") != std::string::npos ||
-					words[0].find("https://") != std::string::npos
+				if(linkTextSplit[0].find("gemini://") != std::string::npos ||
+					linkTextSplit[0].find("http://") != std::string::npos ||
+					linkTextSplit[0].find("https://") != std::string::npos
 				) {
-					urlStream << words[0];
+					urlStream << linkTextSplit[0];
 
-					//TODO Get the host from the link
-					std::string url = words[0];
+					std::string url = linkTextSplit[0];
 
 					auto urlSplit = Utils::StringUtils::Split(url, "/");
 
 					assert(!urlSplit.empty());
 
+					// Remove the empty elements
+					// urlSplit.erase(std::remove_if(urlSplit.begin(), urlSplit.end(), [](std::string& it) {
+					// 	return it.empty();
+					// }));
+
 					std::string protocol = urlSplit[0] + "//";
-					std::string host     = urlSplit[1] + "/";
+					std::string host     = urlSplit[1];
+
+					size_t port = 1965;
+
+					if(linkTextSplit[0].find("http://") != std::string::npos)
+						port = 80;
+					else if(linkTextSplit[0].find("https://") != std::string::npos)
+						port = 443;
+
+					//TODO Check if port is specified in the url if it is overwrite the port number
 
 					std::stringstream relativeUrlStream;
 
@@ -160,9 +178,10 @@ ResponseContent_t ResponseParser::ParseResponseContent(std::string& resp) {
 
 					std::string relativeUrl = relativeUrlStream.str();
 
-					relativeUrl.erase(relativeUrl.end() - 1);
-
-					size_t port = 1965; //TODO Fix this
+					//Remove the last / from the for loop
+					if(*(relativeUrl.end() - 1) == '/') {
+						relativeUrl.erase(relativeUrl.end() - 1);
+					}
 
 					links.push_back({
 						.protocol = protocol,
@@ -172,13 +191,21 @@ ResponseContent_t ResponseParser::ParseResponseContent(std::string& resp) {
 						.port = port,
 						.text = linkTextStream.str()
 					});
-				} else {
-					urlStream << this->base_url << words[0];
+				} else { // Relative URL
+					std::string subUrl = this->relative_url;
+
+					std::regex subUrlRegex("([^\\/]\\w+.gmi)");
+					subUrl = std::regex_replace(subUrl, subUrlRegex, "");
+
+					urlStream << this->host << subUrl << linkTextSplit[0];
+					std::string url  = urlStream.str();
+					std::string host = this->host;
+
 					links.push_back({
 						.protocol = "gemini://",
-						.url = urlStream.str(),
-						.host = this->base_url,
-						.relative_url = words[0],
+						.url = url,
+						.host = host,
+						.relative_url = linkTextSplit[0],
 						.port = 1965,
 						.text = linkTextStream.str()
 					});

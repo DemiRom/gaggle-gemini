@@ -4,18 +4,22 @@
 namespace gg::Utils {
 	std::vector<std::string> StringUtils::Split(std::string &source, const std::string &delim){
 	    std::vector<std::string> tokens;
-
-	    size_t pos = 0;
-
 	    std::string token;
+	    size_t pos = 0;
 
 	    while((pos = source.find(delim)) != std::string::npos) {
 	        token = source.substr(0, pos);
-	        tokens.push_back(token);
+
+			if(!token.empty()) {
+	        	tokens.push_back(token);
+			}
+
 	        source.erase(0, pos + delim.length());
 	    }
 
-	    tokens.push_back(source);
+		if(!source.empty()) {
+	    	tokens.push_back(source);
+		}
 
 	    return tokens;
 	}

@@ -8,6 +8,7 @@
 #define HOST "geminiprotocol.net"
 #define PORT 1965
 #define MAX_CRAWL_COUNT 100
+
 using namespace gg::Net;
 
 size_t crawl_count = 0;
@@ -16,29 +17,36 @@ void crawl(Link_t &link) {
     crawl_count++;
 
     GeminiRequest *request = new GeminiRequest(link.host, link.port);
-    ResponseParser *parser = new ResponseParser("gemini://" + link.host);
-    ResponseObject_t *ro = (ResponseObject_t *)(malloc(sizeof(ResponseObject_t)));
+    std::string response = request->DoRequest(link.url);
 
-    // parser->ParseResponse(request->DoRequest(link.link_url));
-    auto response = request->DoRequest(link.url);
+    ResponseParser *parser = new ResponseParser(link.host, link.relative_url);
+    ResponseObject_t ro = parser->ParseResponse(response);
 
-    std::cout << "Response: " << response << std::endl;
+    std::cout << "BEGIN [" << crawl_count << "] -------------------------- [" << crawl_count << "] BEGIN" << std::endl
+    		  << "\tRequest: " << link.url << std::endl
+    		  << "\tResponse: " << response.substr(0, 20) << "..." << std::endl
+    		  << "\tStatus: " << ro.header.status_code << std::endl
+    		  << "\tMimeType: " << ro.header.mime_type << std::endl
+    		  << "\tLang: " << ro.header.lang << std::endl
+              << "\tLinks Size: " << ro.content.links.size() << std::endl;
 
-    ResponseObject_t rp =
-        parser->ParseResponse(response);
+    if (ro.header.status_code == StatusCode::SUCCESS && crawl_count < MAX_CRAWL_COUNT) {
+        for (Link_t link : ro.content.links) {
+        	if(link.url.find("http://") != std::string::npos || link.url.find("https://") != std::string::npos)
+         		continue;
 
-    memcpy(ro, &rp, sizeof(ResponseObject_t));
-
-    if (ro->header.status_code == StatusCode::SUCCESS && crawl_count < MAX_CRAWL_COUNT) {
-        for (Link_t link : ro->content.links) {
-        // std::cout << "Link: " << link.link_url << std::endl;
+        	std::cout << "\tLink: " << link.url << std::endl
+					  << "\tHost: " << link.host << std::endl
+					  << "\tText: " << link.text << std::endl
+		              << std::endl;
         	crawl(link);
         }
     }
 
+    std::cout << "END [" << crawl_count << "] -------------------------- [" << crawl_count << "] END" << std::endl << std::endl;
+
     delete request;
     delete parser;
-    free(ro);
 }
 
 int main() {
@@ -46,26 +54,20 @@ int main() {
 
     std::string response = request->DoRequest("gemini://geminiprotocol.net/");
 
-    ResponseParser *parser = new ResponseParser("gemini://geminiprotocol.net/");
+    ResponseParser *parser = new ResponseParser("gemini://geminiprotocol.net/", "");
     ResponseObject_t ro = parser->ParseResponse(response);
-
-    std::cout << "Status: " << ro.header.status_code << std::endl;
-    std::cout << "MimeType: " << ro.header.mime_type << std::endl;
-    std::cout << "Lang: " << ro.header.lang << std::endl;
-    // std::cout << "Content: " << ro.content.text << std::endl;
-    // std::cout << "Links Size: " << ro.content.links.size() << std::endl;
 
     if (ro.header.status_code == StatusCode::SUCCESS) {
         for (Link_t link : ro.content.links) {
-	        std::cout << "Link: " << link.url
-					  << " Host: " << link.host
-					  << " Text: " << link.text
-	                  << std::endl;
-	        // crawl(link);
+	      //   std::cout << "Link: " << link.url << std::endl
+					  // << "Host: " << link.host << std::endl
+					  // << "Text: " << link.text << std::endl
+	      //             << std::endl;
+	        crawl(link);
         }
-        for (Heading_t heading : ro.content.headings) {
-        	std::cout << "Heading: " << heading.heading_text << std::endl;
-        }
+        // for (Heading_t heading : ro.content.headings) {
+        // 	std::cout << "Heading: " << heading.heading_text << std::endl;
+        // }
 
     } else {
         std::cout << "Failed to request " << request->GetRequestString()

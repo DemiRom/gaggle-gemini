@@ -20,7 +20,7 @@ namespace gg::Net {
 
     class ResponseParser {
         public:
-            ResponseParser(const std::string& base_url);
+            ResponseParser(const std::string& host, const std::string& relative_url);
 
             ResponseObject_t ParseResponse(std::string& resp);
         protected:
@@ -33,7 +33,8 @@ namespace gg::Net {
             std::vector<Token_t> Tokenize(std::string& content);
 
 
-            std::string base_url;
+            std::string host;
+            std::string relative_url;
     };
 };
 

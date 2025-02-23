@@ -7,10 +7,20 @@
 
 gg::Net::GeminiRequest::GeminiRequest(const std::string& host, size_t port) {
 	std::string host_clean = host;
-	if(host.find("/") != std::string::npos)
-		host_clean.erase(host.find("/"), 1);
 
-    this->hints.ai_family = AF_INET;
+	if(host_clean.find("http://") != std::string::npos || host_clean.find("https://") != std::string::npos)
+	{
+		throw gg::Net::Exceptions::SocketException();
+	}
+
+	if(*(host_clean.end() - 1) == '/')
+		host_clean.erase(host_clean.end() - 1); // Remove the last character which should be "/"
+
+	if(host_clean.find("gemini://") != std::string::npos) {
+		host_clean.erase(0, 9); // Remove the protocol
+	}
+
+	this->hints.ai_family = AF_INET;
     this->hints.ai_socktype = SOCK_STREAM;
     this->hints.ai_protocol = IPPROTO_TCP;
 
@@ -45,9 +55,13 @@ gg::Net::GeminiRequest::~GeminiRequest() {
 }
 
 std::string& gg::Net::GeminiRequest::DoRequest(const std::string& request) {
-    std::string full_request = request + "\r\n"; //Add CRLF to the request url
+	std::string req = request;
 
-    std::cout << "Full Request: " << full_request << std::endl;
+	if(*(req.end() - 1) == '/') {
+		req.erase(req.end() - 1);
+	}
+
+    std::string full_request = request + "\r\n"; //Add CRLF to the request url
 
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
