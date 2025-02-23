@@ -1,10 +1,14 @@
 #include "GeminiRequest.h"
 #include "GeminiException.h"
 
-#include <cerrno>
 #include <iostream>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <openssl/ssl.h>
 #include <sstream>
+#include <string>
+#include <sys/socket.h>
+#include <unistd.h>
 
 gg::Net::GeminiRequest::GeminiRequest(const std::string& host, size_t port) {
 	std::string host_clean = host;

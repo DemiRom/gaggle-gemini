@@ -1,15 +1,17 @@
-#include <algorithm>
 #include <cstring>
 #include <iostream>
-#include <sstream>
 
 #include "GeminiException.h"
 #include "GeminiRequest.h"
 #include "ResponseObject.h"
 #include "ResponseParser.h"
+#include "SQLiteCpp/Database.h"
+#include "SQLiteCpp/Statement.h"
+#include "SQLiteCpp/Transaction.h"
 
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <SQLiteCpp/VariadicBind.h>
+#include <string>
 
 #define HOST "geminiprotocol.net"
 #define PORT 1965
@@ -36,7 +38,7 @@ void crawl(Link_t &link) {
 	    if (ro.header.status_code == StatusCode::SUCCESS && crawl_count < MAX_CRAWL_COUNT) {
 		    std::cout << "BEGIN [" << crawl_count << "] -------------------------- [" << crawl_count << "] BEGIN" << std::endl
 		    		  << "\tRequest: " << link.url << std::endl
-		    		  << "\tResponse: " << response.substr(0, response.find("\n")) << "..." << std::endl
+		    		  << "\tResponse: " << response.substr(0, response.find("\n")) << std::endl
 		    		  << "\tStatus: " << ro.header.status_code << std::endl
 		    		  << "\tMimeType: " << ro.header.mime_type << std::endl
 		    		  << "\tLang: " << ro.header.lang << std::endl
