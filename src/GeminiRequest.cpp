@@ -1,6 +1,7 @@
 #include "GeminiRequest.h"
 #include "GeminiException.h"
 
+#include <cerrno>
 #include <iostream>
 #include <openssl/ssl.h>
 #include <sstream>
@@ -41,11 +42,8 @@ gg::Net::GeminiRequest::GeminiRequest(const std::string& host, size_t port) {
 
     freeaddrinfo(this->ptr_addrs);
 
-    if (this->socket_descriptor == -1) {
-        throw gg::Net::Exceptions::ConnectionException();
-    }
-
-    if(this->socket_descriptor == 0) {
+    if(this->socket_descriptor <= 0) {
+    	// std::cout << "DEBUG Host: " << host_clean << " Port: " << port << " ERR: " << strerror(errno) << std::endl;
     	throw gg::Net::Exceptions::SocketException("Socket could not be opened");
     }
 }
@@ -71,6 +69,8 @@ std::string& gg::Net::GeminiRequest::DoRequest(const std::string& request) {
         throw gg::Net::Exceptions::SSLException("Could not create SSL context");
     }
 
+    SSL_CTX_set_timeout(this->ptr_ssl_ctx, 5);
+
     this->ptr_ssl = SSL_new(this->ptr_ssl_ctx);
 
     if(this->socket_descriptor == 0) {
@@ -78,7 +78,6 @@ std::string& gg::Net::GeminiRequest::DoRequest(const std::string& request) {
     }
 
     SSL_set_fd(this->ptr_ssl, this->socket_descriptor);
-
     if (SSL_connect(this->ptr_ssl) < 0) {
         throw gg::Net::Exceptions::SSLException("SSL Could not connect");
     }

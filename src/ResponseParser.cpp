@@ -197,7 +197,12 @@ ResponseContent_t ResponseParser::ParseResponseContent(std::string& resp) {
 					std::regex subUrlRegex("([^\\/]\\w+.gmi)");
 					subUrl = std::regex_replace(subUrl, subUrlRegex, "");
 
-					urlStream << this->host << subUrl << linkTextSplit[0];
+					if(*(this->host.end() - 1) == '/') {
+						urlStream << this->host << subUrl << linkTextSplit[0];
+					} else {
+						urlStream << this->host << "/" << subUrl << linkTextSplit[0];
+					}
+
 					std::string url  = urlStream.str();
 					std::string host = this->host;
 

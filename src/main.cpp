@@ -1,6 +1,7 @@
 #include <cstring>
 #include <iostream>
 
+#include "GeminiException.h"
 #include "GeminiRequest.h"
 #include "ResponseObject.h"
 #include "ResponseParser.h"
@@ -15,38 +16,49 @@ size_t crawl_count = 0;
 
 void crawl(Link_t &link) {
     crawl_count++;
+    GeminiRequest *request = nullptr;
+    ResponseParser *parser = nullptr;
 
-    GeminiRequest *request = new GeminiRequest(link.host, link.port);
-    std::string response = request->DoRequest(link.url);
+    try {
+    	request = new GeminiRequest(link.host, link.port);
+	    std::string response = request->DoRequest(link.url);
 
-    ResponseParser *parser = new ResponseParser(link.host, link.relative_url);
-    ResponseObject_t ro = parser->ParseResponse(response);
+	    parser = new ResponseParser(link.host, link.relative_url);
+	    ResponseObject_t ro = parser->ParseResponse(response);
 
-    std::cout << "BEGIN [" << crawl_count << "] -------------------------- [" << crawl_count << "] BEGIN" << std::endl
-    		  << "\tRequest: " << link.url << std::endl
-    		  << "\tResponse: " << response.substr(0, 20) << "..." << std::endl
-    		  << "\tStatus: " << ro.header.status_code << std::endl
-    		  << "\tMimeType: " << ro.header.mime_type << std::endl
-    		  << "\tLang: " << ro.header.lang << std::endl
-              << "\tLinks Size: " << ro.content.links.size() << std::endl;
 
-    if (ro.header.status_code == StatusCode::SUCCESS && crawl_count < MAX_CRAWL_COUNT) {
-        for (Link_t link : ro.content.links) {
-        	if(link.url.find("http://") != std::string::npos || link.url.find("https://") != std::string::npos)
-         		continue;
+	    if (ro.header.status_code == StatusCode::SUCCESS && crawl_count < MAX_CRAWL_COUNT) {
+		    std::cout << "BEGIN [" << crawl_count << "] -------------------------- [" << crawl_count << "] BEGIN" << std::endl
+		    		  << "\tRequest: " << link.url << std::endl
+		    		  << "\tResponse: " << response.substr(0, response.find("\n")) << "..." << std::endl
+		    		  << "\tStatus: " << ro.header.status_code << std::endl
+		    		  << "\tMimeType: " << ro.header.mime_type << std::endl
+		    		  << "\tLang: " << ro.header.lang << std::endl
+		              << "\tLinks Size: " << ro.content.links.size() << std::endl;
+	        for (Link_t link : ro.content.links) {
+	        	if(link.url.find("http://") != std::string::npos || link.url.find("https://") != std::string::npos)
+	         		continue;
 
-        	std::cout << "\tLink: " << link.url << std::endl
-					  << "\tHost: " << link.host << std::endl
-					  << "\tText: " << link.text << std::endl
-		              << std::endl;
-        	crawl(link);
-        }
+	        	std::cout << "\tLink: " << link.url << std::endl
+						  << "\tHost: " << link.host << std::endl
+						  << "\tText: " << link.text << std::endl
+			              << std::endl;
+	        	crawl(link);
+	        }
+		    std::cout << "END [" << crawl_count << "] -------------------------- [" << crawl_count << "] END" << std::endl << std::endl;
+	    }
+
+    } catch (Exceptions::SocketException& e) {
+    	std::cerr << "Socket Exception: " << e.what() << " Host: " << link.host << " Port: " << link.port << std::endl;
+    } catch (Exceptions::SSLException& e) {
+    	std::cerr << "SSL Exception: " << e.what() << " Request: " << link.url << std::endl;
     }
 
-    std::cout << "END [" << crawl_count << "] -------------------------- [" << crawl_count << "] END" << std::endl << std::endl;
+    if(request != nullptr)
+    	delete request;
 
-    delete request;
-    delete parser;
+    if(parser != nullptr)
+    	delete parser;
 }
 
 int main() {
