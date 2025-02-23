@@ -153,11 +153,6 @@ ResponseContent_t ResponseParser::ParseResponseContent(std::string& resp) {
 
 					assert(!urlSplit.empty());
 
-					// Remove the empty elements
-					// urlSplit.erase(std::remove_if(urlSplit.begin(), urlSplit.end(), [](std::string& it) {
-					// 	return it.empty();
-					// }));
-
 					std::string protocol = urlSplit[0] + "//";
 					std::string host     = urlSplit[1];
 
@@ -205,6 +200,11 @@ ResponseContent_t ResponseParser::ParseResponseContent(std::string& resp) {
 
 					std::string url  = urlStream.str();
 					std::string host = this->host;
+
+
+					if(url.find("gemini://") == std::string::npos) {
+				    	url = "gemini://" + url;
+				    }
 
 					links.push_back({
 						.protocol = "gemini://",

@@ -53,12 +53,6 @@ gg::Net::GeminiRequest::~GeminiRequest() {
 }
 
 std::string& gg::Net::GeminiRequest::DoRequest(const std::string& request) {
-	std::string req = request;
-
-	if(*(req.end() - 1) == '/') {
-		req.erase(req.end() - 1);
-	}
-
     std::string full_request = request + "\r\n"; //Add CRLF to the request url
 
     OpenSSL_add_all_algorithms();
