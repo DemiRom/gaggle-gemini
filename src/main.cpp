@@ -15,7 +15,7 @@
 
 #define HOST "geminiprotocol.net"
 #define PORT 1965
-#define MAX_CRAWL_COUNT 100
+#define MAX_CRAWL_COUNT 200
 
 using namespace gg::Net;
 
@@ -44,8 +44,16 @@ void crawl(Link_t &link) {
 		    		  << "\tLang: " << ro.header.lang << std::endl
 		              << "\tLinks Size: " << ro.content.links.size() << std::endl;
 	        for (Link_t link : ro.content.links) {
-	        	if(link.url.find("http://") != std::string::npos || link.url.find("https://") != std::string::npos)
+
+				if(link.url.find("http://") != std::string::npos || link.url.find("https://") != std::string::npos)
 	         		continue;
+
+	        	SQLite::Statement query(db, "SELECT * FROM links WHERE url == ?");
+	         	query.bind(1, link.url);
+	        	if(query.executeStep()) { // If there are results returned that means we've seen the link before so we should continue
+					std::cout << "Skipping: " << link.url << std::endl;
+					continue;
+				}
 
 	        	std::cout << "\tLink: " << link.url << std::endl
 						  << "\tHost: " << link.host << std::endl
@@ -53,10 +61,10 @@ void crawl(Link_t &link) {
 			              << std::endl;
 
 				SQLite::Transaction transaction(db);
-	        	SQLite::Statement query(db, "INSERT INTO links VALUES (NULL, ?, ?)");
-	         	query.bind(1, link.url);
-	          	query.bind(2, link.text);
-	        	query.exec();
+	        	SQLite::Statement insert(db, "INSERT INTO links VALUES (NULL, ?, ?)");
+	         	insert.bind(1, link.url);
+				insert.bind(2, link.text);
+	        	insert.exec();
 	        	transaction.commit();
 
 	        	crawl(link);

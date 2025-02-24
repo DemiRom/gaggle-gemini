@@ -1,12 +1,16 @@
 #include "GeminiRequest.h"
 #include "GeminiException.h"
+#include "openssl/evp.h"
 
+#include <cstddef>
+#include <cstdlib>
 #include <iostream>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <openssl/ssl.h>
 #include <sstream>
 #include <string>
+#include <sys/_types/_ssize_t.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -34,7 +38,7 @@ gg::Net::GeminiRequest::GeminiRequest(const std::string& host, size_t port) {
         exit(1);
     }
 
-    for (struct addrinfo *addr = this->ptr_addrs; addr != NULL; addr = addr->ai_next) {
+    for (struct addrinfo *addr = this->ptr_addrs; addr != nullptr; addr = addr->ai_next) {
         this->socket_descriptor = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
 
         if (this->socket_descriptor == -1) break;
