@@ -15,7 +15,7 @@
 
 #define HOST "geminiprotocol.net"
 #define PORT 1965
-#define MAX_CRAWL_COUNT 200
+#define MAX_CRAWL_COUNT 500
 
 using namespace gg::Net;
 
@@ -90,19 +90,6 @@ int main() {
 
 	db.exec("DROP TABLE IF EXISTS links");
     db.exec("CREATE TABLE links (id INTEGER PRIMARY KEY, url TEXT, text TEXT)");
-
-    // // first row
-    // int nb = db.exec("INSERT INTO test VALUES (NULL, \"test\")");
-    // std::cout << "INSERT INTO test VALUES (NULL, \"test\")\", returned " << nb << std::endl;
-
-    // // second row
-    // nb = db.exec("INSERT INTO test VALUES (NULL, \"second\")");
-    // std::cout << "INSERT INTO test VALUES (NULL, \"second\")\", returned " << nb << std::endl;
-
-    // // update the second row
-    // nb = db.exec("UPDATE test SET value=\"second-updated\" WHERE id='2'");
-    // std::cout << "UPDATE test SET value=\"second-updated\" WHERE id='2', returned " << nb << std::endl;
-
 
     GeminiRequest *request = new GeminiRequest(HOST, PORT);
 
